@@ -1,10 +1,11 @@
-name: Pack and Publish OCI Image to Docker Registry and GitHub Packages
+name: Pack and Publish OCI Image to Docker Registry
 
 on:
   push:
     branches:
       - main
       - master
+      - rudransh404
   workflow_dispatch:
     inputs:
       workflow_choice:
@@ -40,7 +41,7 @@ jobs:
 
   publish-rock:
     needs: build-rock
-    if: github.ref_name == 'main' || github.ref_name == 'master'
+    if: github.ref_name == 'main' || github.ref_name == 'master' || github.ref_name == 'rudransh404'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -63,57 +64,29 @@ jobs:
           sudo systemctl enable docker
           sudo systemctl is-active --quiet docker || sudo systemctl start docker
 
-      # - name: Log in to Docker Hub
-      #   uses: docker/login-action@v3.2.0
-      #   with:
-      #     username: ${{ secrets.DOCKER_USERNAME }}
-      #     password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Log in to GitHub Packages
+      - name: Log in to Docker Hub
         uses: docker/login-action@v3.2.0
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: rudransh404
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and Push Docker Image (Edge & Latest Channel)
         if: github.event.inputs.workflow_choice == 'edge' || github.event.inputs.workflow_choice == 'both' || github.event_name == 'push' || github.event_name == 'workflow_run'
-        env:
-          USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          ORG: ${{ github.repository_owner }}
         run: |
           IMAGE="$(yq '.name' rockcraft.yaml)"
           VERSION="$(yq '.version' rockcraft.yaml)"
           ROCK="$(ls *.rock | tail -n 1)"
-          ORG_NAME=$(echo "${ORG}" | tr '[:upper:]' '[:lower:]')
-          sudo rockcraft.skopeo --insecure-policy copy oci-archive:"${ROCK}" docker-daemon:"${ORG_NAME}/${IMAGE}:${VERSION}-edge"
-          # Push to Docker Hub
-          # docker tag ${ORG_NAME}/${IMAGE}:${VERSION}-edge ${USERNAME}:${VERSION}-edge
-          # docker push ${USERNAME}/${IMAGE}:${VERSION}-edge
-          # docker tag ${USERNAME}/${IMAGE}:${VERSION}-edge ${USERNAME}/${IMAGE}:latest
-          # docker push ${USERNAME}/${IMAGE}:latest
-          # Push to GitHub Packages
-          GITHUB_IMAGE="ghcr.io/${ORG_NAME}/${IMAGE}"
-          docker tag ${ORG_NAME}/${IMAGE}:${VERSION}-edge ${GITHUB_IMAGE}:${VERSION}-edge
-          docker push ${GITHUB_IMAGE}:${VERSION}-edge
-          docker tag ${GITHUB_IMAGE}:${VERSION}-edge ${GITHUB_IMAGE}:latest
-          docker push ${GITHUB_IMAGE}:latest
+          sudo rockcraft.skopeo --insecure-policy copy oci-archive:"${ROCK}" docker-daemon:"rudransh404/${IMAGE}:${VERSION}-edge"
+          docker push rudransh404/${IMAGE}:${VERSION}-edge
+          docker tag rudransh404/${IMAGE}:${VERSION}-edge rudransh404/${IMAGE}:latest
+          docker push rudransh404/${IMAGE}:latest
 
       - name: Build and Push Docker Image (Stable Channel)
         if: github.event.inputs.workflow_choice == 'stable' || github.event.inputs.workflow_choice == 'both'
-        env:
-          USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          ORG: ${{ github.repository_owner }}
         run: |
             IMAGE="$(yq '.name' rockcraft.yaml)"
             VERSION="$(yq '.version' rockcraft.yaml)"
             ROCK="$(ls *.rock | tail -n 1)"
-            ORG_NAME=$(echo "${ORG}" | tr '[:upper:]' '[:lower:]')
-            sudo rockcraft.skopeo --insecure-policy copy oci-archive:"${ROCK}" docker-daemon:"${ORG_NAME}/${IMAGE}:${VERSION}-stable"
+            sudo rockcraft.skopeo --insecure-policy copy oci-archive:"${ROCK}" docker-daemon:"rudransh404/${IMAGE}:${VERSION}-stable"
             # Push to Docker Hub
-            # docker tag ${ORG_NAME}/${IMAGE}:${VERSION}-stable ${USERNAME}:${VERSION}-stable
-            # docker push ${USERNAME}/${IMAGE}:${VERSION}-stable
-            # Push to GitHub Packages
-            GITHUB_IMAGE="ghcr.io/${ORG_NAME}/${IMAGE}"
-            docker tag ${ORG_NAME}/${IMAGE}:${VERSION}-stable ${GITHUB_IMAGE}:${VERSION}-stable
-            docker push ${GITHUB_IMAGE}:${VERSION}-stable
+            docker push rudransh404/${IMAGE}:${VERSION}-stable
